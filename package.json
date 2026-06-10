@@ -1,0 +1,18 @@
+{
+  "name": "claude-gateway",
+  "version": "1.0.0",
+  "description": "Gateway de Claude con control de consumo por usuario",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
