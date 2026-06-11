@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Gateway</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f9f8f5;
+      --surface:    #ffffff;
+      --sidebar-bg: #f4f3ef;
+      --text:       #1a1a19;
+      --text-2:     #6b6966;
+      --text-3:     #9b9894;
+      --border:     #e5e4e0;
+      --border-2:   #d5d4cf;
+      --accent:     #d97706;
+      --accent-bg:  #fef3c7;
+      --user-bubble:#f0ede6;
+      --hover:      #eceae4;
+      --danger:     #dc2626;
+      --success:    #16a34a;
+      --info:       #2563eb;
+      --navy:       #005E86;
+      --sky:        #1D9ED9;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+    #root { height: 100vh; }
+
+    /* ── Shell ── */
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 260px; background: var(--sidebar-bg); display: flex; flex-direction: column; border-right: 1px solid var(--border); flex-shrink: 0; }
+    .sidebar-top { padding: 14px 12px 10px; }
+    .new-chat-btn { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text); transition: background .15s; }
+    .new-chat-btn:hover { background: var(--hover); }
+    .sidebar-section { padding: 4px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 12px; margin-bottom: 4px; }
+    .conv-list { flex: 1; overflow-y: auto; padding: 0 8px; }
+    .conv-item { padding: 8px 10px; border-radius: 7px; cursor: pointer; font-size: 13px; color: var(--text-2); transition: background .1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+    .conv-item:hover { background: var(--hover); color: var(--text); }
+    .conv-item.active { background: var(--hover); color: var(--text); font-weight: 500; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+    .quota-mini { margin-bottom: 12px; }
+    .quota-mini-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 4px; }
+    .quota-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+    .quota-fill { height: 100%; border-radius: 99px; transition: width .4s; }
+    .fill-ok   { background: #22c55e; }
+    .fill-warn { background: #f59e0b; }
+    .fill-over { background: #ef4444; }
+    .user-row { display: flex; align-items: center; gap: 9px; padding: 6px 4px; border-radius: 7px; cursor: pointer; }
+    .user-row:hover { background: var(--hover); }
+    .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .user-meta { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--text-3); }
+    .logout-btn { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 15px; padding: 3px; border-radius: 4px; }
+    .logout-btn:hover { background: var(--border); color: var(--text); }
+
+    /* ── Main ── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+
+    /* ── Model bar ── */
+    .model-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .model-pills { display: flex; gap: 5px; align-items: center; }
+    .model-pill { padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 500; border: 1px solid var(--border-2); background: transparent; color: var(--text-2); cursor: pointer; transition: all .15s; }
+    .model-pill:hover { border-color: var(--text-3); color: var(--text); }
+    .model-pill.active { background: var(--text); color: #fff; border-color: var(--text); }
+    .model-pill.haiku  { }
+    .model-pill.sonnet.active { background: var(--navy); border-color: var(--navy); }
+    .model-pill.opus.active   { background: #7c3aed; border-color: #7c3aed; }
+    .model-cost-hint { font-size: 11px; color: var(--text-3); }
+
+    /* ── Messages ── */
+    .messages { flex: 1; overflow-y: auto; padding: 0; }
+    .messages-inner { max-width: 740px; margin: 0 auto; padding: 28px 20px 20px; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; gap: 12px; text-align: center; }
+    .empty-icon { width: 44px; height: 44px; background: var(--sidebar-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .empty-title { font-size: 20px; font-weight: 600; color: var(--text); }
+    .empty-sub { font-size: 14px; color: var(--text-2); max-width: 320px; line-height: 1.5; }
+    .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
+    .suggestion-chip { padding: 7px 14px; border-radius: 99px; border: 1px solid var(--border-2); font-size: 13px; color: var(--text-2); cursor: pointer; background: var(--surface); transition: all .15s; }
+    .suggestion-chip:hover { border-color: var(--text-3); color: var(--text); background: var(--hover); }
+
+    .msg { margin-bottom: 24px; }
+    .msg-user { display: flex; justify-content: flex-end; }
+    .msg-user-bubble { background: var(--user-bubble); border-radius: 14px 14px 3px 14px; padding: 10px 16px; max-width: 72%; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .msg-assistant { display: flex; gap: 12px; align-items: flex-start; }
+    .msg-bot-icon { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--navy), var(--sky)); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; font-size: 14px; color: #fff; font-weight: 700; }
+    .msg-bot-content { flex: 1; min-width: 0; font-size: 14px; line-height: 1.75; color: var(--text); }
+    .msg-bot-content p { margin-bottom: 10px; }
+    .msg-bot-content p:last-child { margin-bottom: 0; }
+    .msg-bot-content h1, .msg-bot-content h2, .msg-bot-content h3 { margin: 16px 0 8px; font-weight: 600; }
+    .msg-bot-content h1 { font-size: 18px; }
+    .msg-bot-content h2 { font-size: 16px; }
+    .msg-bot-content h3 { font-size: 14px; }
+    .msg-bot-content ul, .msg-bot-content ol { margin: 8px 0 8px 20px; }
+    .msg-bot-content li { margin-bottom: 4px; }
+    .msg-bot-content strong { font-weight: 600; color: var(--text); }
+    .msg-bot-content em { font-style: italic; }
+    .msg-bot-content a { color: var(--info); text-decoration: underline; }
+    .msg-bot-content blockquote { border-left: 3px solid var(--border-2); padding-left: 12px; color: var(--text-2); margin: 8px 0; }
+    .msg-bot-content table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 13px; }
+    .msg-bot-content th, .msg-bot-content td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
+    .msg-bot-content th { background: var(--sidebar-bg); font-weight: 600; }
+    .msg-meta { font-size: 11px; color: var(--text-3); margin-top: 6px; margin-left: 40px; }
+
+    /* ── Code blocks ── */
+    .code-wrap { position: relative; margin: 10px 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+    .code-header { display: flex; align-items: center; justify-content: space-between; background: #f6f6f4; padding: 7px 14px; border-bottom: 1px solid var(--border); }
+    .code-lang { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: lowercase; }
+    .copy-btn { font-size: 11px; font-weight: 500; color: var(--text-2); background: none; border: none; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .copy-btn:hover { background: var(--border); }
+    .code-wrap pre { margin: 0 !important; border-radius: 0 !important; background: #fafaf8 !important; }
+    .code-wrap code { font-size: 13px !important; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important; }
+    .inline-code { background: var(--sidebar-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12.5px; font-family: 'Consolas', monospace; color: var(--text); }
+
+    /* ── Input ── */
+    .input-area { padding: 14px 20px 18px; background: var(--surface); flex-shrink: 0; }
+    .input-inner { max-width: 740px; margin: 0 auto; }
+    .input-box { border: 1.5px solid var(--border-2); border-radius: 14px; background: var(--surface); overflow: hidden; transition: border-color .15s; box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+    .input-box:focus-within { border-color: var(--text-3); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .input-textarea { width: 100%; padding: 13px 16px 0; font-size: 14px; font-family: inherit; border: none; outline: none; resize: none; min-height: 52px; max-height: 200px; background: transparent; color: var(--text); line-height: 1.6; }
+    .input-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px 8px; }
+    .input-hint { font-size: 11px; color: var(--text-3); }
+    .send-btn { width: 34px; height: 34px; border-radius: 8px; border: none; background: var(--text); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all .15s; flex-shrink: 0; }
+    .send-btn:hover { background: #333; }
+    .send-btn:disabled { background: var(--border); color: var(--text-3); cursor: not-allowed; }
+    .limit-warn { text-align: center; font-size: 12px; color: var(--danger); margin-top: 8px; }
+
+    /* ── Typing ── */
+    .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .tdot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); animation: tdot 1.3s infinite; }
+    .tdot:nth-child(2) { animation-delay: .2s; }
+    .tdot:nth-child(3) { animation-delay: .4s; }
+    @keyframes tdot { 0%,60%,100% { transform: scale(1); opacity: .5; } 30% { transform: scale(1.3); opacity: 1; } }
+
+    /* ── Admin ── */
+    .admin-content { flex: 1; overflow-y: auto; padding: 28px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .stat-label { font-size: 12px; color: var(--text-2); margin-bottom: 8px; font-weight: 500; }
+    .stat-val { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .card-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: var(--text-3); background: var(--sidebar-bg); border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafaf8; }
+    .badge { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+    .badge-g { background: #dcfce7; color: #15803d; }
+    .badge-r { background: #fee2e2; color: #b91c1c; }
+    .mini-bar-wrap { display: flex; align-items: center; gap: 7px; }
+    .mini-bar { flex: 1; height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; min-width: 50px; }
+    .mini-fill { height: 100%; border-radius: 99px; }
+    .acts { display: flex; gap: 5px; }
+
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
+    .btn-primary  { background: var(--text); color: #fff; }
+    .btn-primary:hover { background: #333; }
+    .btn-outline  { background: transparent; color: var(--text); border-color: var(--border-2); }
+    .btn-outline:hover { border-color: var(--text-3); background: var(--hover); }
+    .btn-danger   { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success  { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Modal ── */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
+    .modal { background: #fff; border-radius: 14px; width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+    .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 15px; font-weight: 600; }
+    .modal-body { padding: 22px; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+    .x-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-3); line-height: 1; }
+    .x-btn:hover { color: var(--text); }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+    .field input, .field select { width: 100%; border: 1.5px solid var(--border-2); border-radius: 8px; padding: 9px 11px; font-size: 13px; outline: none; transition: border-color .15s; font-family: inherit; background: #fff; }
+    .field input:focus, .field select:focus { border-color: var(--text-3); }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field-hint { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+    .err-msg { background: #fee2e2; color: #b91c1c; border-radius: 7px; padding: 9px 12px; font-size: 13px; margin-bottom: 12px; }
+
+    /* ── Login ── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+    .login-card { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,.07); }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--navy), var(--sky)); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 22px; color: #fff; font-weight: 700; }
+    .login-title { font-size: 20px; font-weight: 700; color: var(--text); }
+    .login-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 22px; right: 22px; background: var(--text); color: #fff; padding: 11px 16px; border-radius: 9px; font-size: 13px; font-weight: 500; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,.2); animation: tin .2s ease; }
+    .toast.err { background: var(--danger); }
+    .toast.ok  { background: var(--success); }
+    @keyframes tin { from { transform: translateY(12px); opacity: 0; } }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── marked setup ─────────────────────────────────────────────
+marked.setOptions({ breaks: true, gfm: true });
+
+// ── API ──────────────────────────────────────────────────────
+const api = {
+  async call(method, path, body, token) {
+    const r = await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error desconocido');
+    return d;
+  },
+  get:  (p, t)    => api.call('GET',    p, null, t),
+  post: (p, b, t) => api.call('POST',   p, b, t),
+  put:  (p, b, t) => api.call('PUT',    p, b, t),
+};
+
+// ── Helpers ──────────────────────────────────────────────────
+const fmt   = n => `$${Number(n).toFixed(4)}`;
+const pct   = (u, l) => Math.min((u / l) * 100, 100);
+const fCls  = p => p >= 90 ? 'fill-over' : p >= 65 ? 'fill-warn' : 'fill-ok';
+
+// ── Markdown renderer with code copy ─────────────────────────
+function copyCode(btn, code) {
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = 'Copiado ✓';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
+  });
+}
+
+function MarkdownMsg({ content }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    // Highlight all code blocks
+    ref.current.querySelectorAll('pre code').forEach(el => {
+      hljs.highlightElement(el);
+      // Add copy button
+      const pre = el.parentElement;
+      if (pre.parentElement?.classList.contains('code-wrap')) return;
+      const lang = el.className.replace('language-','').split(' ')[0] || 'código';
+      const wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      const header = document.createElement('div');
+      header.className = 'code-header';
+      const langLabel = document.createElement('span');
+      langLabel.className = 'code-lang';
+      langLabel.textContent = lang;
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = 'Copiar';
+      copyBtn.onclick = () => copyCode(copyBtn, el.textContent);
+      header.appendChild(langLabel);
+      header.appendChild(copyBtn);
+      pre.parentNode.insertBefore(wrap, pre);
+      wrap.appendChild(header);
+      wrap.appendChild(pre);
+    });
+    // Style inline code
+    ref.current.querySelectorAll('code:not(pre code)').forEach(el => {
+      el.className = 'inline-code';
+    });
+  }, [content]);
+
+  return (
+    <div ref={ref} className="msg-bot-content"
+      dangerouslySetInnerHTML={{ __html: marked.parse(content) }} />
+  );
+}
+
+// ── Toast ────────────────────────────────────────────────────
+function Toast({ msg, type, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, []);
+  return <div className={`toast ${type === 'error' ? 'err' : 'ok'}`}>{msg}</div>;
+}
+
+// ── QuotaMini ────────────────────────────────────────────────
+function QuotaMini({ me }) {
+  if (!me) return null;
+  const dp = pct(me.daily_used, me.daily_limit_usd);
+  const mp = pct(me.monthly_used, me.monthly_limit_usd);
+  return (
+    <div className="quota-mini">
+      <div className="quota-mini-label"><span>Hoy</span><span>{fmt(me.daily_used)} / {fmt(me.daily_limit_usd)}</span></div>
+      <div className="quota-bar"><div className={`quota-fill ${fCls(dp)}`} style={{ width: `${dp}%` }} /></div>
+      <div className="quota-mini-label"><span>Este mes</span><span>{fmt(me.monthly_used)} / {fmt(me.monthly_limit_usd)}</span></div>
+      <div className="quota-bar"><div className={`quota-fill ${fCls(mp)}`} style={{ width: `${mp}%` }} /></div>
+    </div>
+  );
+}
+
+// ── Login ────────────────────────────────────────────────────
+function Login({ onLogin }) {
+  const [email, setEmail] = useState('');
+  const [pass, setPass]   = useState('');
+  const [err, setErr]     = useState('');
+  const [loading, setL]   = useState(false);
+
+  async function submit(e) {
+    e.preventDefault(); setErr(''); setL(true);
+    try { const d = await api.post('/api/auth/login', { email, password: pass }); onLogin(d.token, d.user); }
+    catch (e) { setErr(e.message); }
+    finally { setL(false); }
+  }
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <div className="login-logo">
+          <div className="login-icon">C</div>
+          <div className="login-title">Claude Gateway</div>
+          <div className="login-sub">Asistente de IA para tu equipo</div>
+        </div>
+        <form onSubmit={submit}>
+          <div className="field"><label>Correo electrónico</label>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@empresa.com" autoFocus required />
+          </div>
+          <div className="field"><label>Contraseña</label>
+            <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="••••••••" required />
+          </div>
+          {err && <div className="err-msg">{err}</div>}
+          <button className="btn btn-primary" style={{width:'100%',padding:'10px',fontSize:'14px'}} disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Chat ─────────────────────────────────────────────────────
+const SUGGESTIONS = [
+  'Resume este texto para mí',
+  'Escribe un email profesional',
+  'Explica este código',
+  'Ayúdame a redactar un reporte',
+];
+
+const MODEL_INFO = {
+  'claude-haiku-4-5-20251001': { short: 'Haiku',  desc: 'Rápido · económico' },
+  'claude-sonnet-4-6':         { short: 'Sonnet', desc: 'Equilibrado' },
+  'claude-opus-4-6':           { short: 'Opus',   desc: 'Máxima capacidad' },
+};
+
+function Chat({ token, user, me, onRefreshMe }) {
+  const [msgs, setMsgs]     = useState([]);
+  const [input, setInput]   = useState('');
+  const [loading, setL]     = useState(false);
+  const [error, setError]   = useState('');
+  const [models, setModels] = useState([]);
+  const [model, setModel]   = useState('claude-haiku-4-5-20251001');
+  const [convs, setConvs]   = useState([]);
+  const endRef  = useRef(null);
+  const taRef   = useRef(null);
+
+  useEffect(() => {
+    api.get('/api/models', token).then(setModels).catch(()=>{});
+    api.get('/api/messages', token).then(ms => {
+      setMsgs(ms.map(m => ({ role: m.role, content: m.content, cost: m.cost_usd })));
+    }).catch(()=>{});
+  }, []);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, loading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+  }, [input]);
+
+  async function send(text) {
+    const t = (text || input).trim();
+    if (!t || loading) return;
+    setInput(''); setError('');
+    const newMsgs = [...msgs, { role: 'user', content: t }];
+    setMsgs(newMsgs);
+    setL(true);
+    try {
+      const payload = newMsgs.map(m => ({ role: m.role, content: m.content }));
+      const res = await api.post('/api/chat', { messages: payload, model }, token);
+      setMsgs([...newMsgs, { role: 'assistant', content: res.content, cost: res.usage.cost_usd, model: res.model }]);
+      onRefreshMe();
+    } catch(e) {
+      setError(e.message);
+      setMsgs(newMsgs.slice(0,-1));
+    } finally { setL(false); }
+  }
+
+  const blocked = me && (me.daily_used >= me.daily_limit_usd || me.monthly_used >= me.monthly_limit_usd);
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+      {/* Model selector */}
+      <div className="model-bar">
+        <div className="model-pills">
+          {models.map(m => {
+            const info = MODEL_INFO[m.id] || { short: m.id, desc: '' };
+            const cls  = m.id.includes('haiku') ? 'haiku' : m.id.includes('sonnet') ? 'sonnet' : 'opus';
+            return (
+              <button key={m.id} className={`model-pill ${cls} ${model===m.id?'active':''}`} onClick={()=>setModel(m.id)}>
+                {info.short}
+              </button>
+            );
+          })}
+        </div>
+        <span className="model-cost-hint">
+          {MODEL_INFO[model]?.desc || ''}
+        </span>
+      </div>
+
+      {/* Messages */}
+      <div className="messages">
+        <div className="messages-inner">
+          {msgs.length === 0 && !loading && (
+            <div className="empty-state">
+              <div className="empty-icon">✦</div>
+              <div className="empty-title">Hola, {user.name.split(' ')[0]}</div>
+              <div className="empty-sub">¿En qué puedo ayudarte hoy?</div>
+              <div className="suggestions">
+                {SUGGESTIONS.map(s => (
+                  <button key={s} className="suggestion-chip" onClick={() => send(s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {msgs.map((m, i) => (
+            <div key={i} className="msg">
+              {m.role === 'user' ? (
+                <div className="msg-user">
+                  <div className="msg-user-bubble">{m.content}</div>
+                </div>
+              ) : (
+                <>
+                  <div className="msg-assistant">
+                    <div className="msg-bot-icon">✦</div>
+                    <MarkdownMsg content={m.content} />
+                  </div>
+                  {m.cost > 0 && (
+                    <div className="msg-meta">{fmt(m.cost)} · {MODEL_INFO[m.model]?.short || 'Claude'}</div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+
+          {loading && (
+            <div className="msg">
+              <div className="msg-assistant">
+                <div className="msg-bot-icon">✦</div>
+                <div className="typing"><div className="tdot"/><div className="tdot"/><div className="tdot"/></div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div style={{ background:'#fee2e2', color:'#b91c1c', borderRadius:8, padding:'10px 14px', fontSize:13, marginBottom:16 }}>
+              {error}
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
+      </div>
+
+      {/* Input */}
+      <div className="input-area">
+        <div className="input-inner">
+          <div className="input-box">
+            <textarea ref={taRef} className="input-textarea" rows={1}
+              placeholder={blocked ? "Límite alcanzado — contacta al admin" : "Escríbele a Claude…"}
+              value={input} onChange={e=>setInput(e.target.value)}
+              disabled={loading || blocked}
+              onKeyDown={e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}
+            />
+            <div className="input-footer">
+              <span className="input-hint">Enter para enviar · Shift+Enter para nueva línea</span>
+              <button className="send-btn" onClick={()=>send()} disabled={!input.trim() || loading || blocked}>↑</button>
+            </div>
+          </div>
+          {blocked && <div className="limit-warn">Límite alcanzado. Contacta al administrador para ampliarlo.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── User modal ───────────────────────────────────────────────
+function UserModal({ user, onSave, onClose, token }) {
+  const isNew = !user?.id;
+  const [f, setF] = useState(user || { name:'', email:'', password:'', daily_limit_usd:1.00, monthly_limit_usd:8.00, is_active:true });
+  const [err, setErr] = useState('');
+  const [loading, setL] = useState(false);
+  const set = (k,v) => setF(p=>({...p,[k]:v}));
+
+  async function save() {
+    setErr(''); setL(true);
+    try {
+      isNew ? await api.post('/api/admin/users', f, token)
+            : await api.put(`/api/admin/users/${f.id}`, f, token);
+      onSave();
+    } catch(e){ setErr(e.message); } finally{ setL(false); }
+  }
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div className="modal-head">
+          <span className="modal-title">{isNew ? 'Nuevo trabajador' : 'Editar trabajador'}</span>
+          <button className="x-btn" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="field"><label>Nombre completo</label>
+            <input value={f.name} onChange={e=>set('name',e.target.value)} placeholder="Juan Pérez" />
+          </div>
+          <div className="field"><label>Correo electrónico</label>
+            <input type="email" value={f.email} onChange={e=>set('email',e.target.value)} disabled={!isNew} placeholder="juan@empresa.com"/>
+          </div>
+          {isNew && <div className="field"><label>Contraseña</label>
+            <input type="password" value={f.password} onChange={e=>set('password',e.target.value)} placeholder="Mínimo 6 caracteres"/>
+          </div>}
+          <div className="field-row">
+            <div className="field"><label>Límite diario (USD)</label>
+              <input type="number" step="0.5" min="0.1" value={f.daily_limit_usd} onChange={e=>set('daily_limit_usd',parseFloat(e.target.value))}/>
+            </div>
+            <div className="field"><label>Límite mensual (USD)</label>
+              <input type="number" step="1" min="1" value={f.monthly_limit_usd} onChange={e=>set('monthly_limit_usd',parseFloat(e.target.value))}/>
+              <div className="field-hint">Se resetea el día 1 de cada mes</div>
+            </div>
+          </div>
+          {!isNew && <div className="field"><label>Estado</label>
+            <select value={f.is_active?'1':'0'} onChange={e=>set('is_active',e.target.value==='1')}>
+              <option value="1">✅ Activo</option>
+              <option value="0">🚫 Bloqueado</option>
+            </select>
+          </div>}
+          {err && <div className="err-msg">{err}</div>}
+        </div>
+        <div className="modal-foot">
+          <button className="btn btn-outline" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={save} disabled={loading}>{loading?'Guardando…':isNew?'Crear':'Guardar cambios'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin ────────────────────────────────────────────────────
+function Admin({ token }) {
+  const [users, setUsers] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [modal, setModal] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (msg, type='ok') => setToast({msg,type});
+
+  async function load() {
+    const [u, s] = await Promise.all([
+      api.get('/api/admin/users', token),
+      api.get('/api/admin/stats', token),
+    ]);
+    setUsers(u); setStats(s);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggle(u) {
+    await api.put(`/api/admin/users/${u.id}`, {...u, is_active: !u.is_active}, token);
+    showToast(u.is_active ? 'Usuario bloqueado' : 'Usuario activado');
+    load();
+  }
+
+  const workers = users.filter(u => u.role === 'worker');
+
+  return (
+    <div className="admin-content">
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={()=>setToast(null)}/>}
+      {modal !== null && (
+        <UserModal user={modal?.id ? modal : null} token={token}
+          onSave={()=>{setModal(null);load();showToast('Guardado correctamente');}}
+          onClose={()=>setModal(null)} />
+      )}
+
+      {stats && (
+        <div className="stats-grid">
+          {[
+            { label: 'Gasto hoy',        val: fmt(stats.total_today),  sub: 'USD' },
+            { label: 'Gasto este mes',   val: fmt(stats.total_month),  sub: 'USD' },
+            { label: 'Trabajadores',     val: stats.active_users,      sub: 'activos' },
+          ].map(s => (
+            <div className="stat-card" key={s.label}>
+              <div className="stat-label">{s.label}</div>
+              <div className="stat-val">{s.val}</div>
+              <div className="stat-sub">{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-head">
+          <span className="card-title">Trabajadores</span>
+          <button className="btn btn-primary btn-sm" onClick={()=>setModal({})}>+ Nuevo</button>
+        </div>
+        <table>
+          <thead><tr><th>Nombre</th><th>Email</th><th>Estado</th><th>Hoy</th><th>Este mes</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {workers.map(u => {
+              const dp = pct(u.daily_used, u.daily_limit_usd);
+              const mp = pct(u.monthly_used, u.monthly_limit_usd);
+              return (
+                <tr key={u.id}>
+                  <td style={{fontWeight:600}}>{u.name}</td>
+                  <td style={{color:'var(--text-2)',fontSize:12}}>{u.email}</td>
+                  <td><span className={`badge ${u.is_active?'badge-g':'badge-r'}`}>{u.is_active?'Activo':'Bloqueado'}</span></td>
+                  <td><div className="mini-bar-wrap">
+                    <div className="mini-bar"><div className={`mini-fill ${fCls(dp)}`} style={{width:`${dp}%`}}/></div>
+                    <span style={{fontSize:11,color:'var(--text-3)',whiteSpace:'nowrap'}}>{fmt(u.daily_used)}/{fmt(u.daily_limit_usd)}</span>
+                  </div></td>
+                  <td><div className="mini-bar-wrap">
+                    <div className="mini-bar"><div className={`mini-fill ${fCls(mp)}`} style={{width:`${mp}%`}}/></div>
+                    <span style={{fontSize:11,color:'var(--text-3)',whiteSpace:'nowrap'}}>{fmt(u.monthly_used)}/{fmt(u.monthly_limit_usd)}</span>
+                  </div></td>
+                  <td><div className="acts">
+                    <button className="btn btn-outline btn-sm" onClick={()=>setModal(u)}>Editar</button>
+                    <button className={`btn btn-sm ${u.is_active?'btn-danger':'btn-success'}`} onClick={()=>toggle(u)}>
+                      {u.is_active?'Bloquear':'Activar'}
+                    </button>
+                  </div></td>
+                </tr>
+              );
+            })}
+            {workers.length === 0 && (
+              <tr><td colSpan={6} style={{textAlign:'center',color:'var(--text-3)',padding:32}}>
+                Sin trabajadores aún — agrega el primero 👆
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── App shell ────────────────────────────────────────────────
+function App() {
+  const [token, setToken] = useState(()=>localStorage.getItem('gw_t'));
+  const [user, setUser]   = useState(()=>{ try{return JSON.parse(localStorage.getItem('gw_u'))}catch{return null} });
+  const [me, setMe]       = useState(null);
+  const [page, setPage]   = useState('chat');
+
+  function login(t, u) {
+    setToken(t); setUser(u);
+    localStorage.setItem('gw_t', t);
+    localStorage.setItem('gw_u', JSON.stringify(u));
+  }
+
+  function logout() {
+    setToken(null); setUser(null); setMe(null);
+    localStorage.removeItem('gw_t'); localStorage.removeItem('gw_u');
+  }
+
+  async function refreshMe() {
+    if (!token) return;
+    try { setMe(await api.get('/api/me', token)); }
+    catch { logout(); }
+  }
+
+  useEffect(() => { if (token) refreshMe(); }, [token]);
+
+  if (!token || !user) return <Login onLogin={login} />;
+  if (!me) return (
+    <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-3)'}}>
+      Cargando…
+    </div>
+  );
+
+  const isAdmin = user.role === 'admin';
+
+  return (
+    <div className="shell">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <button className="new-chat-btn" onClick={()=>{setPage('chat')}}>
+            <span style={{fontSize:16}}>✦</span> Nueva conversación
+          </button>
+        </div>
+
+        {isAdmin && (
+          <>
+            <div className="sidebar-section">Menú</div>
+            <div className="conv-list">
+              <div className={`conv-item ${page==='chat'?'active':''}`} onClick={()=>setPage('chat')}>
+                💬 Chat
+              </div>
+              <div className={`conv-item ${page==='admin'?'active':''}`} onClick={()=>setPage('admin')}>
+                ⚙️ Administración
+              </div>
+            </div>
+          </>
+        )}
+
+        <div style={{flex:1}}/>
+
+        <div className="sidebar-footer">
+          <QuotaMini me={me} />
+          <div className="user-row" onClick={logout} title="Cerrar sesión">
+            <div className="avatar">{user.name[0].toUpperCase()}</div>
+            <div className="user-meta">
+              <div className="user-name">{user.name}</div>
+              <div className="user-role">{user.role === 'admin' ? 'Administrador' : 'Trabajador'}</div>
+            </div>
+            <button className="logout-btn">↩</button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="main">
+        {page === 'chat'  && <Chat  token={token} user={user} me={me} onRefreshMe={refreshMe} />}
+        {page === 'admin' && isAdmin && <Admin token={token} />}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
